@@ -26,7 +26,7 @@ headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
     "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-    "Cookie": "_user_identify_=c1320e98-14d3-315f-8a53-5839cc893625; JSESSIONID=aaaGJVFn9qVax8McIUvqw; Hm_lvt_37854ae85b75cf05012d4d71db2a355a=1529372878; Hm_lvt_ddf0d99bc06024e29662071b7fc5044f=1529372878; uID=463157; sID=f71d75366d480fae6a0c2a5c7a24a626; Hm_lpvt_37854ae85b75cf05012d4d71db2a355a=1529378884; Hm_lpvt_ddf0d99bc06024e29662071b7fc5044f=1529378884"
+    "Cookie": "_user_identify_=515633a0-0c83-308c-a400-4fb705304923; JSESSIONID=aaaujzKY7wBfbfNMQqBqw; Hm_lvt_37854ae85b75cf05012d4d71db2a355a=1529465712; Hm_lvt_ddf0d99bc06024e29662071b7fc5044f=1529465712; uID=450357; sID=0764638aec963cbfbec65ee7a9a8adb5; Hm_lpvt_37854ae85b75cf05012d4d71db2a355a=1529477680; Hm_lpvt_ddf0d99bc06024e29662071b7fc5044f=1529477680"
 }
 
 round_dict = {
@@ -60,6 +60,15 @@ round_dict = {
 }
 
 
+def get_timestamp(tt):
+
+    timeArray = time.strptime(tt, "%Y-%m-%d")
+
+    timeStamp = int(time.mktime(timeArray))
+
+    return timeStamp
+
+
 def get_proxies():
 
     proxy_list = list(set(urllib.urlopen(
@@ -72,7 +81,7 @@ def get_proxies():
     return proxies
 
 
-def get_one_page(url,proxies):
+def get_one_page(url, proxies):
     while True:
         try:
 
@@ -80,6 +89,9 @@ def get_one_page(url,proxies):
             req = requests.get(url, headers=headers, proxies=proxies)
             if req.status_code == 200:
                 content = req.text
+                if content.find('"code":1,"msg":"搜索信息获取失败"'):
+                    proxies = get_proxies()
+                    continue
                 return content
             else:
                 print req.status_code
@@ -94,7 +106,7 @@ def get_one_page(url,proxies):
                 break
 
 
-def get_info(content,finished_stamp):
+def get_info(content, finished_stamp):
     while True:
         try:
             content = content.replace('\\"', '"')
@@ -112,15 +124,9 @@ def get_info(content,finished_stamp):
             today_date = time.strftime("%Y-%m-%d")
             today_stamp = get_timestamp(today_date)
 
-
             conn = pymysql.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree", port=13306,
                                    charset="utf8")
             cursor = conn.cursor()
-
-
-
-            # print finished_date
-            # print today_date
 
             for i in range(10):
                 print '第'+str(i)+'条'
@@ -161,14 +167,12 @@ def get_info(content,finished_stamp):
                     print alias[i] + '  投资事件插入完成 ' + str(datetime.datetime.now())[:19]
 
                 elif get_timestamp(finance_time[i]) == today_stamp:
-
                     print '今天刚更新的内容 保证完整新 先不爬'
-                    pass
+
                 else:
 
-                    print ' 根据时间限制 无可爬内容'
+                    print ' 根据时间限制 无可爬内容 睡眠1天 86400秒后继续'
                     quit()
-
             conn.commit()
             print '插入完成'
             break
@@ -182,6 +186,7 @@ def get_info(content,finished_stamp):
                                    charset="utf8")
                 cursor = conn.cursor()
                 print '数据库连接重启 ' + str(datetime.datetime.now())[:19]
+                time.sleep(3)
                 continue
             elif str(e).find('20003') >= 0:
                 cursor.close()
@@ -191,21 +196,15 @@ def get_info(content,finished_stamp):
                                        charset="utf8")
                 cursor = conn.cursor()
                 print '数据库连接重启 ' + str(datetime.datetime.now())[:19]
+                time.sleep(3)
                 continue
             elif str(e).find('IndexError'):
                 print content
+
+                time.sleep(5)
                 continue
             else:
                 break
-
-
-def get_timestamp(tt):
-
-    timeArray = time.strptime(tt, "%Y-%m-%d")
-
-    timeStamp = int(time.mktime(timeArray))
-
-    return timeStamp
 
 
 def main(url,finished_stamp):
@@ -229,13 +228,15 @@ if __name__ == '__main__':
         cursor.close()
         conn.close()
 
+        print '上次爬结束的 日期是 : ' + finished_date
 
-
-        for i in range(1,100):
+        for i in range(1,10):
             url = 'https://www.innotree.cn/inno/search/ajax/getAllSearchResult?query=&tagquery=&st='+str(i)+'&ps=10&areaName=&rounds=&show=0&idate=&edate=&cSEdate=-1&cSRound=-1&cSFdate=1&cSInum=-1&iSNInum=1&iSInum=-1&iSEnum=-1&iSEdate=-1&fchain='
 
             main(url,finished_stamp)
 
             print '第'+str(i)+'一页爬好了'
-        print '今日任务完成,休息中...'
-        time.sleep(84600)
+
+            time.sleep(3)
+        # print '今日任务完成,休息中...'
+

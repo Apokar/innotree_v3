@@ -8,11 +8,19 @@ import json
 import requests
 import re
 import MySQLdb
-
+import time
 import sys
+import datetime
+import os
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
 
-conn = MySQLdb.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree", port=13306, charset="utf8")
-cursor = conn.cursor()
+def main():
+    while True:
+
+        os.system('python2 D:\PycharmProjects\innotree_v3\\tt.py')
+
+        time.sleep(30)
+
+
+if __name__ == '__main__':
+    main()

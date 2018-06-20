@@ -1,12 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # author : HuaiZ
-# first edit : 2017-11-2
+# first edit : 2018-6-19
 # 爬取 近期 融资信息
+import time
+import traceback
+import random
+import urllib
 
 import requests
 import re
-import MySQLdb
+import pymysql
 import datetime
 import sys
 
@@ -55,79 +59,183 @@ round_dict = {
     "404.0": "未透露",
 }
 
+
 def get_proxies():
-    proxies = list(set(requests.get(
-        "http://60.205.92.109/api.do?name=86020600B1D5E92725E68858AEBCF346&status=1&type=static").text.split('\n')))
+
+    proxy_list = list(set(urllib.urlopen(
+        'http://60.205.92.109/api.do?name=3E30E00CFEDCD468E6862270F5E728AF&status=1&type=static').read().split('\n')[
+                          :-1]))
+    index = random.randint(0, len(proxy_list) - 1)
+    current_proxy = proxy_list[index]
+    print "NEW PROXY:\t%s" % current_proxy
+    proxies = {"http": "http://" + current_proxy, "https": "http://" + current_proxy, }
     return proxies
 
 
-def get_one_page(url):
-    req = requests.get(url, headers=headers)
-    if req.status_code == 200:
-        content = req.text
-        return content
-    else:
-        print 'error code hz_001'
+def get_one_page(url,proxies):
+    while True:
+        try:
+
+            print '处理: ' + url
+            req = requests.get(url, headers=headers, proxies=proxies)
+            if req.status_code == 200:
+                content = req.text
+                return content
+            else:
+                print req.status_code
+            break
+        except Exception,e:
+
+            if str(e).find('HTTPSConnectionPool') >= 0:
+                print 'Max retries exceeded with url'
+                continue
+            else:
+                print str(e)
+                break
 
 
-def get_info(content):
-    content = content.replace('\\"', '"')
+def get_info(content,finished_stamp):
+    while True:
+        try:
+            content = content.replace('\\"', '"')
 
-    full_names = re.findall('"name":"(.*?)","insts"', content)
-    alias = re.findall('"alias":"(.*?)",', content)
-    tags = re.findall('"tags":"(.*?)",', content)
-    finance_time = re.findall('"idate":"(.*?)",', content)
-    finance_amount = re.findall('"amount":"(.*?)",', content)
-    round = re.findall('"round":(.*?)}', content)
-    create_time = re.findall('"edate":"(.*?)",', content)
-    location = re.findall('"address":"(.*?)",', content)
-    invester_list = re.findall('"insts":\[{(.*?)}]', content)
+            full_names = re.findall('"name":"(.*?)","insts"', content)
+            alias = re.findall('"alias":"(.*?)",', content)
+            tags = re.findall('"tags":"(.*?)",', content)
+            finance_time = re.findall('"idate":"(.*?)",', content)
+            finance_amount = re.findall('"amount":"(.*?)",', content)
+            round = re.findall('"round":(.*?)}', content)
+            create_time = re.findall('"edate":"(.*?)",', content)
+            location = re.findall('"address":"(.*?)",', content)
+            invester_list = re.findall('"insts":\[{(.*?)}]', content)
 
-    conn = MySQLdb.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree", port=13306,
-                           charset="utf8")
-    cursor = conn.cursor()
-
-    for i in range(10):
-        invest = ''
-        print full_names[i]
-        print alias[i]
-        print tags[i]
-        print finance_time[i]
-        print finance_amount[i]
-        print round[i]
-        print location[i]
-        print create_time[i]
-
-        invester_count = re.findall('"instName":"(.*?)"', invester_list[i])
-        for x in range(len(invester_count)):
-            invest += invester_count[x] + ' '
-        print invest
-        cursor.execute(
-            'insert into table_innotree_investment_info values ("%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s")' % (
-                full_names[i],
-                alias[i],
-                tags[i],
-                finance_time[i],
-                finance_amount[i],
-                round_dict[round[i]],
-                location[i],
-                create_time[i],
-                invest,
-                str(datetime.datetime.now()),
-                str(datetime.datetime.now())[:10]
-            ))
-        print alias[i] + '投资事件插入完成 ' + str(datetime.datetime.now())[:19]
-    conn.commit()
-    print '第 测试页 插入完成'
+            today_date = time.strftime("%Y-%m-%d")
+            today_stamp = get_timestamp(today_date)
 
 
-def main(url):
-    content = get_one_page(url)
+            conn = pymysql.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree", port=13306,
+                                   charset="utf8")
+            cursor = conn.cursor()
 
-    get_info(content)
+
+
+            # print finished_date
+            # print today_date
+
+            for i in range(10):
+                print '第'+str(i)+'条'
+                invest = ''
+                print full_names[i]
+                print finance_time[i]
+                # print alias[i]
+                # print tags[i]
+                # print finance_time[i]
+                # print finance_amount[i]
+                # print round[i]
+                # print location[i]
+                # print create_time[i]
+                finance_stamp = get_timestamp(finance_time[i])
+                invester_count = re.findall('"instName":"(.*?)"', invester_list[i])
+                for x in range(len(invester_count)):
+                    invest += invester_count[x] + ' '
+                # print invest
+
+                print str(finished_stamp)
+                print str(finance_stamp) + ' ' + str(finance_time[i])
+                print str(today_stamp) + ' ' + str(today_date)
+                if finished_stamp < get_timestamp(finance_time[i]) < today_stamp:
+                    cursor.execute(
+                        'insert into table_innotree_investment_info values ("%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s")' % (
+                            full_names[i],
+                            alias[i],
+                            tags[i],
+                            finance_time[i],
+                            finance_amount[i],
+                            round_dict[round[i]],
+                            location[i],
+                            create_time[i],
+                            invest,
+                            str(datetime.datetime.now()),
+                            str(datetime.datetime.now())[:10]
+                        ))
+                    print alias[i] + '  投资事件插入完成 ' + str(datetime.datetime.now())[:19]
+
+                elif get_timestamp(finance_time[i]) == today_stamp:
+
+                    print '今天刚更新的内容 保证完整新 先不爬'
+                    pass
+                else:
+
+                    print ' 根据时间限制 无可爬内容'
+                    quit()
+
+            conn.commit()
+            print '插入完成'
+            break
+        except Exception ,e:
+            print traceback.format_exc()
+
+            if str(e).find('20006') >= 0:
+                cursor.close()
+                conn.close()
+                conn = pymysql.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree", port=13306,
+                                   charset="utf8")
+                cursor = conn.cursor()
+                print '数据库连接重启 ' + str(datetime.datetime.now())[:19]
+                continue
+            elif str(e).find('20003') >= 0:
+                cursor.close()
+                conn.close()
+                conn = pymysql.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree",
+                                       port=13306,
+                                       charset="utf8")
+                cursor = conn.cursor()
+                print '数据库连接重启 ' + str(datetime.datetime.now())[:19]
+                continue
+            elif str(e).find('IndexError'):
+                print content
+                continue
+            else:
+                break
+
+
+def get_timestamp(tt):
+
+    timeArray = time.strptime(tt, "%Y-%m-%d")
+
+    timeStamp = int(time.mktime(timeArray))
+
+    return timeStamp
+
+
+def main(url,finished_stamp):
+
+    proxies=get_proxies()
+
+    content = get_one_page(url,proxies)
+
+    get_info(content,finished_stamp)
 
 
 if __name__ == '__main__':
-    url = 'https://www.innotree.cn/inno/search/ajax/getAllSearchResult?query=&tagquery=&st=1&ps=10&areaName=&rounds=&show=0&idate=&edate=&cSEdate=-1&cSRound=-1&cSFdate=1&cSInum=-1&iSNInum=1&iSInum=-1&iSEnum=-1&iSEdate=-1&fchain='
+    while True:
+        conn = pymysql.connect(host="221.226.72.226", user="root", passwd="somao1129", db="innotree", port=13306,
+                               charset="utf8")
+        cursor = conn.cursor()
+        cursor.execute('select max(last_finance_time) from table_innotree_investment_info')
 
-    main(url)
+        finished_date = cursor.fetchall()[0][0]
+        finished_stamp = get_timestamp(finished_date)
+        cursor.close()
+        conn.close()
+
+
+
+        for i in range(1,100):
+            url = 'https://www.innotree.cn/inno/search/ajax/getAllSearchResult?query=&tagquery=&st='+str(i)+'&ps=10&areaName=&rounds=&show=0&idate=&edate=&cSEdate=-1&cSRound=-1&cSFdate=1&cSInum=-1&iSNInum=1&iSInum=-1&iSEnum=-1&iSEdate=-1&fchain='
+
+            main(url,finished_stamp)
+
+            print '第'+str(i)+'一页爬好了'
+        print '今日任务完成,休息中...'
+        time.sleep(84600)

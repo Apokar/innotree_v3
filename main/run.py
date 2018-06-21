@@ -8,9 +8,32 @@ import os
 
 def main():
     while True:
-        os.system('python2 D:\PycharmProjects\innotree_v3\\main\innotree_investment.py')
 
+        os.system('python2 D:\PycharmProjects\innotree_v3\\main\innotree_investment.py')
+        print 'run    innotree_investment.py'
         time.sleep(30)
+
+        os.system('python2 D:\PycharmProjects\innotree_v3\\main\innotree_company.py')
+        print 'run    innotree_company.py'
+        time.sleep(30)
+
+        os.system('python2 D:\PycharmProjects\innotree_v3\\main\\add_team_2.0.py')
+        print 'run    add_team_2.0.py'
+        time.sleep(30)
+
+        os.system('python2 D:\PycharmProjects\innotree_v3\\main\\add_shareholder_2.0.py')
+        print 'run    add_shareholder_2.0.py'
+        time.sleep(30)
+
+        os.system('python2 D:\PycharmProjects\innotree_v3\\main\\add_production_2.0.py')
+        print 'run    add_production_2.0.py'
+        time.sleep(30)
+
+        os.system('python2 D:\PycharmProjects\innotree_v3\\main\\add_financing_2.0.py')
+        print 'run    add_financing_2.0.py'
+        time.sleep(86400)
+
+        print '六个脚本跑完了,明天继续'
 
 
 

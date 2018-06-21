@@ -218,21 +218,23 @@ if __name__ == '__main__':
     need_ids = get_id_fromDB()
     print '获取id完成'
 
-    start_no = 0
-    end_no = len(need_ids)
-    thread_num = 5
-    while start_no < (end_no - thread_num + 1):
-        threads = []
-
-        for inner_index in range(0, thread_num):
-            threads.append(threading.Thread(target=get_info, args=(need_ids[start_no + inner_index],)))
-        for t in threads:
-            t.setDaemon(True)
-            t.start()
-        t.join()
-        start_no += thread_num
-    print '执行完毕  _@_ ' + str(datetime.datetime.now()) + 'sleep 24 hours and run again, don\'t kill me '
-    time.sleep(86400)
+    # start_no = 0
+    # end_no = len(need_ids)
+    # thread_num = 5
+    # while start_no < (end_no - thread_num + 1):
+    #     threads = []
+    #
+    #     for inner_index in range(0, thread_num):
+    #         threads.append(threading.Thread(target=get_info, args=(need_ids[start_no + inner_index],)))
+    #     for t in threads:
+    #         t.setDaemon(True)
+    #         t.start()
+    #     t.join()
+    #     start_no += thread_num
+    # print '执行完毕  _@_ ' + str(datetime.datetime.now()) + 'sleep 24 hours and run again, don\'t kill me '
+    for id in need_ids:
+        get_info(id)
+    print '执行完毕  _@_ ' + str(datetime.datetime.now())
 
     # id = '3467672994577708827'
     # get_info(id)
